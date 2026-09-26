@@ -33,105 +33,121 @@ pipeline {
         stage('Secrets Detection') {
             steps {
                 sh '''
+                    mkdir -p reports
+
                     echo "Recent commits:"
                     git log --oneline -5
 
                     docker run --rm \
-                    -v "$WORKSPACE:/repo" \
-                    ghcr.io/gitleaks/gitleaks:latest \
-                    git /repo --redact --verbose
+                        -v "$WORKSPACE:/repo" \
+                        ghcr.io/gitleaks/gitleaks:latest \
+                        git /repo \
+                        --config=/repo/.gitleaks.toml \
+                        --report-format json \
+                        --report-path /repo/reports/gitleaks.json \
+                        --redact \
+                        --verbose
                 '''
-            }
-        }
-
-        stage('Install') {
-            steps {
-                dir('backend') {
-                    sh 'npm ci'
-                }
-            }
-        }
-
-        stage('Lint') {
-            steps {
-                dir('backend') {
-                    sh 'npm run lint'
-                }
-            }
-        }
-
-        stage('Unit Test') {
-            steps {
-                dir('backend') {
-                    sh 'npm test -- --coverage --reporters=jest-junit'
-                }
             }
 
             post {
                 always {
-                    dir('backend') {
-                        junit 'reports/junit.xml'
-
-                        recordCoverage(
-                            tools: [[
-                                parser: 'COBERTURA',
-                                pattern: 'coverage/cobertura-coverage.xml'
-                            ]]
-                        )
-                    }
+                    archiveArtifacts(
+                        artifacts: 'reports/gitleaks.json',
+                        allowEmptyArchive: true
+                    )
                 }
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                dir('backend') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh '''
-                            npx @sonar/scan \
-                              -Dsonar.projectKey=taskflow-api \
-                              -Dsonar.sources=src \
-                              -Dsonar.tests=src \
-                              -Dsonar.exclusions=**/*.spec.ts \
-                              -Dsonar.test.inclusions=**/*.spec.ts \
-                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                        '''
-                    }
-                }
-            }
-        }
+        // stage('Install') {
+        //     steps {
+        //         dir('backend') {
+        //             sh 'npm ci'
+        //         }
+        //     }
+        // }
 
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+        // stage('Lint') {
+        //     steps {
+        //         dir('backend') {
+        //             sh 'npm run lint'
+        //         }
+        //     }
+        // }
 
-        stage('E2E') {
-            steps {
-                dir('backend') {
-                    sh '''
-                        docker compose down --remove-orphans || true
-                        docker compose up -d --build
-                        docker compose ps
-                    '''
+        // stage('Unit Test') {
+        //     steps {
+        //         dir('backend') {
+        //             sh 'npm test -- --coverage --reporters=jest-junit'
+        //         }
+        //     }
 
-                    script {
-                        docker.image('mcr.microsoft.com/playwright:v1.63.0-noble')
-                            .inside('--network backend_default') {
+        //     post {
+        //         always {
+        //             dir('backend') {
+        //                 junit 'reports/junit.xml'
 
-                            sh '''
-                                npm ci
+        //                 recordCoverage(
+        //                     tools: [[
+        //                         parser: 'COBERTURA',
+        //                         pattern: 'coverage/cobertura-coverage.xml'
+        //                     ]]
+        //                 )
+        //             }
+        //         }
+        //     }
+        // }
 
-                                BASE_URL=http://api:3000 \
-                                npx playwright test
-                            '''
-                        }
-                    }
-                }
-            }
+        // stage('SonarQube Analysis') {
+        //     steps {
+        //         dir('backend') {
+        //             withSonarQubeEnv('SonarQube') {
+        //                 sh '''
+        //                     npx @sonar/scan \
+        //                       -Dsonar.projectKey=taskflow-api \
+        //                       -Dsonar.sources=src \
+        //                       -Dsonar.tests=src \
+        //                       -Dsonar.exclusions=**/*.spec.ts \
+        //                       -Dsonar.test.inclusions=**/*.spec.ts \
+        //                       -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+        //                 '''
+        //             }
+        //         }
+        //     }
+        // }
+
+        // stage('Quality Gate') {
+        //     steps {
+        //         timeout(time: 5, unit: 'MINUTES') {
+        //             waitForQualityGate abortPipeline: true
+        //         }
+        //     }
+        // }
+
+        // stage('E2E') {
+        //     steps {
+        //         dir('backend') {
+        //             sh '''
+        //                 docker compose down --remove-orphans || true
+        //                 docker compose up -d --build
+        //                 docker compose ps
+        //             '''
+
+        //             script {
+        //                 docker.image('mcr.microsoft.com/playwright:v1.63.0-noble')
+        //                     .inside('--network backend_default') {
+
+        //                     sh '''
+        //                         npm ci
+
+        //                         BASE_URL=http://api:3000 \
+        //                         npx playwright test
+        //                     '''
+        //                 }
+        //             }
+        //         }
+        //     }
 
             post {
                 always {

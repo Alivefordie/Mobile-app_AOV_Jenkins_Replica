@@ -149,36 +149,36 @@ pipeline {
         //         }
         //     }
 
-            post {
-                always {
-                    dir('backend') {
-                        junit(
-                            allowEmptyResults: true,
-                            testResults: 'reports/e2e-junit.xml'
-                        )
+    //         post {
+    //             always {
+    //                 dir('backend') {
+    //                     junit(
+    //                         allowEmptyResults: true,
+    //                         testResults: 'reports/e2e-junit.xml'
+    //                     )
 
-                        publishHTML(target: [
-                            reportDir: 'playwright-report',
-                            reportFiles: 'index.html',
-                            reportName: 'Playwright HTML Report',
-                            keepAll: true,
-                            alwaysLinkToLastBuild: true,
-                            allowMissing: true
-                        ])
+    //                     publishHTML(target: [
+    //                         reportDir: 'playwright-report',
+    //                         reportFiles: 'index.html',
+    //                         reportName: 'Playwright HTML Report',
+    //                         keepAll: true,
+    //                         alwaysLinkToLastBuild: true,
+    //                         allowMissing: true
+    //                     ])
 
-                        archiveArtifacts(
-                            artifacts: 'playwright-report/**',
-                            allowEmptyArchive: true
-                        )
+    //                     archiveArtifacts(
+    //                         artifacts: 'playwright-report/**',
+    //                         allowEmptyArchive: true
+    //                     )
 
-                        sh '''
-                            docker compose logs api || true
-                            docker compose down --remove-orphans || true
-                        '''
-                    }
-                }
-            }
-        }   
+    //                     sh '''
+    //                         docker compose logs api || true
+    //                         docker compose down --remove-orphans || true
+    //                     '''
+    //                 }
+    //             }
+    //         }
+    //     }   
     }
 
     post {
